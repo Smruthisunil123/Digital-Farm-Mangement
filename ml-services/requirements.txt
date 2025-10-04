@@ -1,0 +1,12 @@
+# For the web server
+Flask==3.0.0
+
+# For OCR
+google-cloud-vision==3.7.1
+pillow==10.1.0
+
+# For Chatbot & Language Processing
+#google-cloud-texttospeech==2.16.1
+gTTS==2.5.1
+google-cloud-speech==2.24.0
+pydub==0.25.1
