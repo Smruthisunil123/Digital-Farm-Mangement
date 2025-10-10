@@ -1,5 +1,5 @@
 const { admin, db } = require('../config/firebase');
-// const blockchainService = require('../services/blockchainService'); // Commented out for now
+const blockchainService = require('../services/blockchainService'); // Commented out for now
 
 const prescriptionController = {
   // Renamed to addPrescription to match intent
@@ -35,17 +35,19 @@ const prescriptionController = {
       // 1. Save to Firestore
       await newPrescriptionRef.set(prescriptionData);
 
-      // 2. Log to Blockchain (Removed for now to prevent crash)
-      /*
+     
       const blockchainResult = await blockchainService.logPrescriptionEvent(
         prescriptionData.id, vetId, farmerId
       );
-      */
 
       res.status(201).send({
-        ...prescriptionData,
-        message: 'Prescription created successfully.',
-        // blockchainTx: blockchainResult.transactionHash // Removed for now
+         message: 'Prescription created and logged to blockchain.',
+
+        // ✅ 3. INCLUDE THE TRANSACTION HASH from your service in the response
+
+        blockchainTxHash: blockchainResult.transactionHash, 
+
+        prescription: prescriptionData,
       });
 
     } catch (error) {

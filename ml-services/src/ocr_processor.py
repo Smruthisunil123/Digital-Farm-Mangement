@@ -1,36 +1,36 @@
-# src/ocr_processor.py
-
-from google.cloud import vision
+import base64
+import pytesseract
 from PIL import Image
-import io
+from io import BytesIO
+import cv2
+import numpy as np
 
 def extract_text_from_image(image_bytes: bytes) -> str:
     """
-    Uses Google Cloud Vision API to extract text from an image.
-    
-    Args:
-        image_bytes: The image file as a byte string.
-
-    Returns:
-        The extracted text as a single string.
+    Uses Tesseract OCR with a general-purpose page segmentation mode to find all text.
     """
     try:
-        client = vision.ImageAnnotatorClient()
-        image = vision.Image(content=image_bytes)
+        print("Preprocessing image for Tesseract OCR...")
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Performs text detection on the image file
-        response = client.text_detection(image=image)
-        texts = response.text_annotations
+        # ✅ THE FIX: Use PSM '3' for automatic page segmentation.
+        # This allows Tesseract to find all blocks of text automatically.
+        custom_config = r'--oem 3 --psm 3'
         
-        if response.error.message:
-            raise Exception(f"Google Cloud Vision API Error: {response.error.message}")
-            
-        if texts:
-            # The first text annotation is the full text block.
-            return texts[0].description.replace('\n', ' ')
-        else:
+        print("Processing preprocessed image with Tesseract using PSM 3...")
+        
+        extracted_text = pytesseract.image_to_string(gray_image, config=custom_config)
+        
+        print(f"Detected text with Tesseract: {extracted_text}")
+        
+        if not extracted_text.strip():
             return "No text found in the image."
             
+        # We return the full text, preserving newlines
+        return extracted_text
+
     except Exception as e:
-        print(f"An error occurred in OCR processing: {e}")
+        print(f"An error occurred in Tesseract OCR processing: {e}")
         return f"Error: {e}"

@@ -1,64 +1,81 @@
-const { db } = require('../config/firebase');
-const mlService = require('../services/mlService');
+const axios = require('axios');
+
+// The URL where your Python ML service is running
+const ML_SERVICE_URL = 'http://localhost:5001';
 
 const reportController = {
-  // Handler for OCR API from the mobile app
+  /**
+   * Receives a base64 encoded image, forwards it to the Python OCR service,
+   * and returns the extracted text.
+   */
   handleOcrScan: async (req, res) => {
-    const { imageBase64 } = req.body;
-    if (!imageBase64) {
-      return res.status(400).send({ message: 'Missing imageBase64 data.' });
+    // The Flutter app will send a JSON object with a key named 'image'
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).send({ message: 'No image data provided.' });
     }
 
     try {
-      // Forward the image data to the Python ML service
-      const mlResponse = await mlService.processOcr(imageBase64);
+      console.log('[Node Server] Received image scan request. Forwarding to Python ML service...');
 
-      // mlResponse should contain extracted text like: { medication: "Amoxicillin", dosage: "50mg" }
-      res.status(200).send(mlResponse); 
+      // Make a POST request to the Python OCR endpoint at http://localhost:5001/ocr
+      const ocrResponse = await axios.post(`${ML_SERVICE_URL}/ocr`, {
+        image: image, // Forward the base64 string in the request body
+      });
+
+      console.log('[Node Server] Received response from Python service.');
+
+      // Send the extracted text from the Python service back to the Flutter app
+      res.status(200).send({
+        message: 'OCR processing successful.',
+        text: ocrResponse.data.text,
+      });
+
     } catch (error) {
-      console.error('Error handling OCR scan:', error);
-      res.status(503).send({ message: 'ML service unavailable or failed to process OCR.', error: error.message });
+      console.error('[Node Server] Error calling Python ML service:', error.message);
+      res.status(500).send({ message: 'Failed to process image with ML service.' });
     }
   },
 
-  // Handler for chatbot queries from the mobile app
+  /**
+   * Placeholder for your chatbot logic.
+   */
   handleChatbotQuery: async (req, res) => {
-    const { userId, message } = req.body;
-    if (!userId || !message) {
-      return res.status(400).send({ message: 'Missing user ID or message.' });
+    // Get the 'query' and 'role' from the request body sent by Flutter
+    const { query, role } = req.body;
+
+    if (!query || !role) {
+      return res.status(400).send({ message: 'Missing query or role in request.' });
     }
 
     try {
-      // Forward the query to the Python ML service
-      const mlResponse = await mlService.getChatbotResponse(userId, message);
+      console.log(`[Node Server] Received chatbot query: "${query}". Forwarding to Python...`);
 
-      // mlResponse should contain chatbot text response and potentially TTS link
-      res.status(200).send(mlResponse);
+      // Make a POST request to the Python /chat endpoint
+      const chatbotResponse = await axios.post(`${ML_SERVICE_URL}/chat`, {
+        query: query,
+        role: role,
+      });
+
+      console.log('[Node Server] Received response from Python chatbot.');
+      
+      // Send the text response from the Python service back to the Flutter app
+      res.status(200).send({
+        response: chatbotResponse.data.response,
+      });
+
     } catch (error) {
-      console.error('Error handling chatbot query:', error);
-      res.status(503).send({ message: 'ML service unavailable or failed to generate response.', error: error.message });
+      console.error('[Node Server] Error calling Python chatbot service:', error.message);
+      res.status(500).send({ message: 'Failed to get chatbot response.' });
     }
   },
 
-  // Generates aggregate data for the Web Dashboard
+  /**
+  * Placeholder for analytics logic
+  */
   getAnalytics: async (req, res) => {
-    // Placeholder for actual complex aggregation logic (e.g., MongoDB aggregation pipeline)
-    try {
-      // Simulate fetching general analytics
-      const analyticsData = {
-        totalPrescriptions: 1500,
-        activeVets: 55,
-        newFarmersLastMonth: 120,
-        medicationTrends: [
-            { name: "Amoxicillin", count: 300 },
-            { name: "Ivermectin", count: 250 }
-        ]
-      };
-      res.status(200).send(analyticsData);
-    } catch (error) {
-      console.error('Error generating analytics:', error);
-      res.status(500).send({ message: 'Failed to generate analytics data.', error: error.message });
-    }
+    res.status(501).send({ message: 'Analytics feature not implemented yet.'});
   }
 };
 

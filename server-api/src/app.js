@@ -25,7 +25,6 @@ require('./config/firebase');
 // --- Routes Imports ---
 const usersRoutes = require('./routes/users');
 const appointmentsRoutes = require('./routes/appointments');
-// ✅ 1. IMPORT THE PRESCRIPTIONS ROUTER
 const prescriptionsRoutes = require('./routes/prescriptions');
 const router = require('./routes/index');
 
@@ -34,6 +33,11 @@ const PORT = 3001;
 const MONGO_URI = process.env.MONGO_URI;
 
 // --- Middlewares ---
+
+// ✅ THE ONLY CHANGE: Add the standard cors() back in as a fallback
+// after our manual preflight handler.
+app.use(cors({ origin: '*' }));
+
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
@@ -55,7 +59,6 @@ if (MONGO_URI && MONGO_URI.startsWith('mongodb')) {
 // --- Routes ---
 app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/appointments', appointmentsRoutes);
-// ✅ 2. USE THE PRESCRIPTIONS ROUTER
 app.use('/api/v1/prescriptions', prescriptionsRoutes);
 app.use('/api/v1', router);
 

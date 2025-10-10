@@ -4,22 +4,12 @@ import 'package:flutter/material.dart';
 class FarmerDashboardScreen extends StatelessWidget {
   const FarmerDashboardScreen({super.key});
 
-  // Helper function to show a "feature coming soon" message
-  void _showFeatureComingSoon(BuildContext context, String featureName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$featureName feature is coming soon!'),
-        backgroundColor: Colors.blueGrey,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Your Farm Dashboard"),
-        backgroundColor: Colors.green.shade800, // A green theme for the farmer
+        backgroundColor: Colors.green.shade800,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -61,6 +51,7 @@ class FarmerDashboardScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 textStyle: const TextStyle(fontSize: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -69,12 +60,15 @@ class FarmerDashboardScreen extends StatelessWidget {
             ElevatedButton.icon(
               icon: const Icon(Icons.camera_alt),
               label: const Text("Scan Medicine (OCR)"),
-              onPressed: () => _showFeatureComingSoon(context, 'OCR Scan'),
+              onPressed: () {
+                Navigator.of(context).pushNamed('/farmer/ocr');
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade600,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 textStyle: const TextStyle(fontSize: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
@@ -83,12 +77,16 @@ class FarmerDashboardScreen extends StatelessWidget {
             ElevatedButton.icon(
               icon: const Icon(Icons.support_agent),
               label: const Text("Chatbot Help"),
-              onPressed: () => _showFeatureComingSoon(context, 'Chatbot'),
+              // ✅ THIS IS THE FIX: This now navigates to the new chatbot screen.
+              onPressed: () {
+                Navigator.of(context).pushNamed('/farmer/chatbot');
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade500,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 textStyle: const TextStyle(fontSize: 18),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
@@ -97,4 +95,3 @@ class FarmerDashboardScreen extends StatelessWidget {
     );
   }
 }
-
