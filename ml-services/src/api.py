@@ -1,55 +1,53 @@
-import base64 # Needed for decoding the image string
 from flask import Flask, request, jsonify
-# ✅ FIX 1: Use a direct import instead of a relative one
-from ocr_processor import extract_text_from_image 
-from chatbot_model import get_chatbot_response 
+# ✅ THE FIX: Import the new, powerful functions from your chatbot_model
+from chatbot_model import process_scan_and_speak, get_chat_response
+import base64
 
 app = Flask(__name__)
 
-@app.route('/ocr', methods=['POST'])
-def process_ocr():
+# ✅ NEW FEATURE: The Scan-to-Speak endpoint
+@app.route('/scan-and-speak', methods=['POST'])
+def scan_and_speak_endpoint():
     """
-    Endpoint to process an image and extract text.
-    ✅ FIX 2: Expects JSON data with a base64 encoded 'image' string.
+    Receives an image, identifies the medicine, fetches its prescription,
+    and returns a voice message with the details.
     """
     data = request.get_json()
     if not data or 'image' not in data:
-        return jsonify({"error": "No image data provided in JSON body"}), 400
-    
-    # 1. Get the base64 string from the JSON payload
-    base64_image_string = data['image']
+        return jsonify({"error": "No image data provided"}), 400
     
     try:
-        # 2. Decode the base64 string into image bytes
-        image_bytes = base64.b64decode(base64_image_string)
-    except Exception as e:
-        return jsonify({"error": f"Invalid base64 data: {e}"}), 400
-
-    # 3. Pass the image bytes to your ocr_processor function
-    extracted_text = extract_text_from_image(image_bytes)
-    
-    if "Error:" in extracted_text:
-        return jsonify({"error": extracted_text}), 500
+        image_bytes = base64.b64decode(data['image'])
         
-    return jsonify({"text": extracted_text})
+        # This function now contains all the complex AI logic
+        audio_base64 = process_scan_and_speak(image_bytes, farmer_id="farmer123")
+        
+        if not audio_base64:
+             return jsonify({"error": "Could not process the request."}), 500
 
-    # ✅ 2. ADD THE CHATBOT ENDPOINT LOGIC
+        return jsonify({"audio": audio_base64})
+    except Exception as e:
+        print(f"Error in /scan-and-speak: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# ✅ UPDATED: The general chatbot endpoint
 @app.route('/chat', methods=['POST'])
-def chat():
-    """
-    Endpoint to interact with the chatbot.
-    """
+def chat_endpoint():
+    """ Handles general chatbot queries in local language. """
     data = request.get_json()
-    if not data or 'query' not in data or 'role' not in data:
-        return jsonify({"error": "Missing 'query' or 'role' in request body"}), 400
+    if not data or 'query' not in data:
+        return jsonify({"error": "No query provided"}), 400
         
     query = data['query']
-    role = data['role']
+    role = data.get('role', 'farmer')
     
-    # Call the chatbot function to get a response
-    response = get_chatbot_response(query, role)
+    # This function now handles translation and speech
+    response_text, response_audio_base64 = get_chat_response(query, role)
     
-    return jsonify({"response": response})
+    return jsonify({
+        "text_response": response_text,
+        "audio_response": response_audio_base64,
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

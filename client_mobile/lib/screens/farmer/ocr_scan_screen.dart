@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'dart:typed_data'; // Needed for Uint8List
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../services/api_service.dart';
 
-/// A screen for the farmer to scan medicine labels using the device camera.
 class OcrScanScreen extends StatefulWidget {
   const OcrScanScreen({super.key});
 
@@ -15,68 +15,63 @@ class OcrScanScreen extends StatefulWidget {
 class _OcrScanScreenState extends State<OcrScanScreen> {
   final ApiService _apiService = ApiService();
   final ImagePicker _picker = ImagePicker();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   bool _isLoading = false;
-  // We store the image data in memory as bytes, which works on all platforms
   Uint8List? _imageBytes;
-  String _ocrResult = '';
+  String _statusMessage = 'Scan a medicine label to get voice instructions.';
 
-  // Function to open the camera, take a picture, and process it
   Future<void> _takePictureAndScan() async {
-    // 1. Pick an image using the camera
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 50, // Compress image to reduce upload size
-    );
+    final XFile? image = await _picker.pickImage(source: ImageSource.camera, imageQuality: 50);
+    if (image == null) return;
 
-    if (image == null) return; // User cancelled the camera
-
-    // ✅ THE FIX: Read the image data into memory as a byte list (Uint8List)
     final bytes = await image.readAsBytes();
-
     setState(() {
       _imageBytes = bytes;
       _isLoading = true;
-      _ocrResult = 'Processing image...';
+      _statusMessage = 'Analyzing image and prescription...';
     });
 
     try {
-      // 2. Convert image bytes to a base64 encoded string
       String base64Image = base64Encode(bytes);
-
-      // 3. Send the base64 string to the server
-      final response = await _apiService.postData('prescriptions/scan/ocr', {'image': base64Image});
+      // ✅ Call the new, powerful endpoint
+      final response = await _apiService.postData('prescriptions/scan-and-speak', {'image': base64Image});
       
-      if(mounted) {
-        setState(() {
-          _ocrResult = response['text'] ?? 'No text could be extracted from the image.';
+      if (mounted && response['audio'] != null) {
+        setState(() => _statusMessage = 'Playing instructions...');
+        
+        // ✅ Decode the audio and play it
+        final audioBytes = base64Decode(response['audio']);
+        await _audioPlayer.play(BytesSource(audioBytes));
+        
+        // Listen for when playback is complete
+        _audioPlayer.onPlayerComplete.first.then((_) {
+          if (mounted) setState(() => _statusMessage = 'Scan complete. Ready for next scan.');
         });
+      } else {
+        throw Exception('No audio data received from server.');
       }
-
     } catch (e) {
-      print("OCR Scan Failed: $e");
+      print("Scan-to-Speak Failed: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error processing image. Please try again.'), backgroundColor: Colors.red),
-        );
-        setState(() {
-          _ocrResult = '';
-        });
+        setState(() => _statusMessage = 'Error: Could not process image. Please try again.');
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Medicine Label'),
+        title: const Text('Scan & Listen'),
         backgroundColor: Colors.green.shade800,
       ),
       body: Padding(
@@ -84,7 +79,6 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image Preview Box
             Container(
               height: 250,
               decoration: BoxDecoration(
@@ -94,15 +88,12 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
               ),
               child: _imageBytes == null
                   ? const Center(child: Icon(Icons.image_search, size: 60, color: Colors.grey))
-                  // ✅ THE FIX: Use the web-compatible Image.memory widget to display the preview
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.memory(_imageBytes!, fit: BoxFit.cover, width: double.infinity),
                     ),
             ),
             const SizedBox(height: 24),
-
-            // Scan Button
             ElevatedButton.icon(
               icon: const Icon(Icons.camera_alt),
               label: const Text('Open Camera & Scan'),
@@ -114,40 +105,21 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
                 textStyle: const TextStyle(fontSize: 18),
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Results Area
-            const Text('Extracted Text:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300)
+            const SizedBox(height: 32),
+            // ✅ Status Display Area
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              Center(
+                child: Text(
+                  _statusMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, color: Colors.black54),
                 ),
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
-                        child: SelectableText( // Use SelectableText to allow copying
-                          _ocrResult.isEmpty ? 'Scan a medicine label to see the text here.' : _ocrResult,
-                          style: TextStyle(fontSize: 16, color: _ocrResult.isEmpty ? Colors.grey : Colors.black),
-                        ),
-                      ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 }
-// ```eof
-
-// ### **Summary of the Fix**
-
-// 1.  **Storing Image Data:** Instead of trying to use a `File` object (which doesn't work on the web), we now read the image data directly into memory as a list of bytes (`Uint8List`).
-// 2.  **Displaying the Image:** We now use the `Image.memory()` widget to display the preview. This widget is specifically designed to work on all platforms, including the web.
-
-// After you replace the code in `ocr_scan_screen.dart` and save the file, your app will hot-reload, and the OCR feature will be fully functional on the web.

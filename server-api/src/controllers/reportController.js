@@ -5,66 +5,43 @@ const ML_SERVICE_URL = 'http://localhost:5001';
 
 const reportController = {
   /**
-   * Receives a base64 encoded image, forwards it to the Python OCR service,
-   * and returns the extracted text.
+   * New function to handle the Scan-to-Speak workflow. 🗣️
+   * It receives an image, forwards it to the Python service for processing,
+   * and sends the resulting audio file back to the app.
    */
-  handleOcrScan: async (req, res) => {
-    // The Flutter app will send a JSON object with a key named 'image'
+  handleScanAndSpeak: async (req, res) => {
     const { image } = req.body;
-
     if (!image) {
       return res.status(400).send({ message: 'No image data provided.' });
     }
-
     try {
-      console.log('[Node Server] Received image scan request. Forwarding to Python ML service...');
-
-      // Make a POST request to the Python OCR endpoint at http://localhost:5001/ocr
-      const ocrResponse = await axios.post(`${ML_SERVICE_URL}/ocr`, {
-        image: image, // Forward the base64 string in the request body
-      });
-
-      console.log('[Node Server] Received response from Python service.');
-
-      // Send the extracted text from the Python service back to the Flutter app
-      res.status(200).send({
-        message: 'OCR processing successful.',
-        text: ocrResponse.data.text,
-      });
-
+      console.log('[Node Server] Received scan-and-speak request. Forwarding to Python...');
+      // Call the new '/scan-and-speak' endpoint on the Python service
+      const mlResponse = await axios.post(`${ML_SERVICE_URL}/scan-and-speak`, { image });
+      
+      // Forward the audio response from Python back to the Flutter app
+      res.status(200).send({ audio: mlResponse.data.audio });
     } catch (error) {
-      console.error('[Node Server] Error calling Python ML service:', error.message);
-      res.status(500).send({ message: 'Failed to process image with ML service.' });
+      console.error('[Node Server] Error in scan-and-speak workflow:', error.message);
+      res.status(500).send({ message: 'Failed to process scan-and-speak request.' });
     }
   },
 
   /**
-   * Placeholder for your chatbot logic.
+   * Updated function for the general chatbot, which now handles voice.
    */
   handleChatbotQuery: async (req, res) => {
-    // Get the 'query' and 'role' from the request body sent by Flutter
-    const { query, role } = req.body;
-
-    if (!query || !role) {
-      return res.status(400).send({ message: 'Missing query or role in request.' });
+    const { query, role, audio } = req.body;
+    if (!query && !audio) {
+      return res.status(400).send({ message: 'Missing query or audio in request.' });
     }
-
     try {
-      console.log(`[Node Server] Received chatbot query: "${query}". Forwarding to Python...`);
-
-      // Make a POST request to the Python /chat endpoint
-      const chatbotResponse = await axios.post(`${ML_SERVICE_URL}/chat`, {
-        query: query,
-        role: role,
-      });
-
-      console.log('[Node Server] Received response from Python chatbot.');
+      console.log(`[Node Server] Received chatbot request. Forwarding to Python...`);
+      // Forward the entire request body to the Python service
+      const mlResponse = await axios.post(`${ML_SERVICE_URL}/chat`, req.body);
       
-      // Send the text response from the Python service back to the Flutter app
-      res.status(200).send({
-        response: chatbotResponse.data.response,
-      });
-
+      // Forward the text and audio response back to the Flutter app
+      res.status(200).send(mlResponse.data);
     } catch (error) {
       console.error('[Node Server] Error calling Python chatbot service:', error.message);
       res.status(500).send({ message: 'Failed to get chatbot response.' });
@@ -72,8 +49,8 @@ const reportController = {
   },
 
   /**
-  * Placeholder for analytics logic
-  */
+   * Placeholder for analytics logic.
+   */
   getAnalytics: async (req, res) => {
     res.status(501).send({ message: 'Analytics feature not implemented yet.'});
   }

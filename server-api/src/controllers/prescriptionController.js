@@ -1,53 +1,43 @@
 const { admin, db } = require('../config/firebase');
-const blockchainService = require('../services/blockchainService'); // Commented out for now
+const blockchainService = require('../services/blockchainService');
 
 const prescriptionController = {
-  // Renamed to addPrescription to match intent
   addPrescription: async (req, res) => {
-    // ✅ FIX: Use field names that match the Flutter form
-    const {
-      vetId,
-      farmerId,
-      animalTagId,
-      medicationName,
-      dosage,
-      withdrawalDays
-    } = req.body;
+    // ✅ FIX: The request body now contains an array of medications
+    const { vetId, farmerId, animalTagId, withdrawalDays, medications } = req.body;
 
-    if (!vetId || !farmerId || !medicationName) {
-      return res.status(400).send({ message: 'Missing required prescription fields.' });
+    if (!vetId || !farmerId || !medications || !Array.isArray(medications) || medications.length === 0) {
+      return res.status(400).send({ message: 'Missing required fields or medications.' });
     }
 
     try {
       const newPrescriptionRef = db.collection('prescriptions').doc();
       
       const prescriptionData = {
-        id: newPrescriptionRef.id,
+        prescriptionId: newPrescriptionRef.id,
         vetId,
         farmerId,
-        animalTagId, // ✅ FIX: Correct field name
-        medicationName, // ✅ FIX: Correct field name
-        dosage,
+        animalTagId,
         withdrawalDays: parseInt(withdrawalDays) || 0,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        medications: medications, // Store the entire array of medications
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      // 1. Save to Firestore
       await newPrescriptionRef.set(prescriptionData);
 
-     
+      // Log the primary medication to the blockchain
+      const primaryMedicationName = medications[0].medicationName || 'multiple';
       const blockchainResult = await blockchainService.logPrescriptionEvent(
-        prescriptionData.id, vetId, farmerId
+        prescriptionData.prescriptionId, 
+        vetId, 
+        farmerId,
+        primaryMedicationName // You could add more data to the log if needed
       );
 
       res.status(201).send({
-         message: 'Prescription created and logged to blockchain.',
-
-        // ✅ 3. INCLUDE THE TRANSACTION HASH from your service in the response
-
-        blockchainTxHash: blockchainResult.transactionHash, 
-
-        prescription: prescriptionData,
+        message: 'Prescription created and logged to blockchain.',
+        blockchainTxHash: blockchainResult.transactionHash,
+        prescription: prescriptionData,
       });
 
     } catch (error) {
@@ -55,10 +45,10 @@ const prescriptionController = {
       res.status(500).send({ message: 'Failed to create prescription.', error: error.message });
     }
   },
-
-  // Your getPrescriptionHistory function looks fine
+  
   getPrescriptionHistory: async (req, res) => {
-    const { farmerId } = req.query; 
+    // This function remains the same and will work correctly
+    const { farmerId } = req.query;
     if (!farmerId) {
       return res.status(400).send({ message: 'Missing farmerId query parameter.' });
     }
@@ -74,4 +64,3 @@ const prescriptionController = {
 };
 
 module.exports = prescriptionController;
-

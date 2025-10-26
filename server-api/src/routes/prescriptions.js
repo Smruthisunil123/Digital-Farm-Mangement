@@ -3,12 +3,15 @@ const router = express.Router();
 const prescriptionController = require('../controllers/prescriptionController');
 const reportController = require('../controllers/reportController');
 
-// Prescription management
-router.post('/add', prescriptionController.addPrescription); // Vet submits new prescription
-router.get('/history', prescriptionController.getPrescriptionHistory); // Farmer/Vet views history
+// --- Prescription Management ---
+router.post('/add', prescriptionController.addPrescription);
+router.get('/history', prescriptionController.getPrescriptionHistory);
 
-// ML/Report routes tied to prescription ecosystem
-router.post('/scan/ocr', reportController.handleOcrScan); // Mobile app sends image for OCR
-router.post('/chatbot', reportController.handleChatbotQuery); // Mobile app sends chatbot message
+// --- ML Service Routes ---
+// ✅ THE FIX: The route is updated to '/scan-and-speak' and calls the new function.
+router.post('/scan-and-speak', reportController.handleScanAndSpeak);
+
+// The chatbot route is also updated to use the correct function
+router.post('/chatbot', reportController.handleChatbotQuery);
 
 module.exports = router;

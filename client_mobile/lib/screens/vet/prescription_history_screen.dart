@@ -2,118 +2,106 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import 'package:intl/intl.dart';
 
-// A model to structure our prescription data from the server
-class Prescription {
+class VetMedicationHistoryItem {
   final String medicationName;
   final String dosage;
-  final DateTime createdAt;
-  final String farmerId;
+  final String animalTagId;
+  final DateTime prescribedOn;
 
-  Prescription({
+  VetMedicationHistoryItem({
     required this.medicationName,
     required this.dosage,
-    required this.createdAt,
-    required this.farmerId,
+    required this.animalTagId,
+    required this.prescribedOn,
   });
-
-  factory Prescription.fromJson(Map<String, dynamic> json) {
-    // Handle Firestore's timestamp format
-    final timestamp = json['createdAt'];
-    DateTime date;
-    if (timestamp != null && timestamp['_seconds'] != null) {
-      date = DateTime.fromMillisecondsSinceEpoch(timestamp['_seconds'] * 1000);
-    } else {
-      date = DateTime.now();
-    }
-
-    return Prescription(
-      medicationName: json['medicationName'] ?? 'N/A',
-      dosage: json['dosage'] ?? 'N/A',
-      createdAt: date,
-      farmerId: json['farmerId'] ?? 'Unknown Farmer',
-    );
-  }
 }
 
-class PrescriptionHistoryScreen extends StatefulWidget {
-  const PrescriptionHistoryScreen({super.key});
-
+class VetPrescriptionHistoryScreen extends StatefulWidget {
+  const VetPrescriptionHistoryScreen({super.key});
   @override
-  State<PrescriptionHistoryScreen> createState() => _PrescriptionHistoryScreenState();
+  State<VetPrescriptionHistoryScreen> createState() => _VetPrescriptionHistoryScreenState();
 }
 
-class _PrescriptionHistoryScreenState extends State<PrescriptionHistoryScreen> {
+class _VetPrescriptionHistoryScreenState extends State<VetPrescriptionHistoryScreen> {
   final ApiService _apiService = ApiService();
-  late Future<List<Prescription>> _historyFuture;
-  // In a real app, you would pass the farmer's ID to this screen.
-  // For now, we are hardcoding it to get data for a specific test farmer.
-  final String _farmerIdForQuery = "farmer123"; 
+  late Future<List<VetMedicationHistoryItem>> _historyFuture;
+  final String _farmerIdForQuery = "farmer123";
 
   @override
   void initState() {
     super.initState();
-    _historyFuture = _fetchHistory();
+    _historyFuture = _fetchAndProcessHistory();
   }
 
-  Future<List<Prescription>> _fetchHistory() async {
-    try {
-      // This endpoint calls the GET /prescriptions/history route on your server
-      final List<dynamic> responseData = await _apiService.getData('prescriptions/history?farmerId=$_farmerIdForQuery');
-      return responseData.map((json) => Prescription.fromJson(json)).toList();
-    } catch (e) {
-      print('Failed to load prescription history: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load history: $e')),
-        );
+  Future<List<VetMedicationHistoryItem>> _fetchAndProcessHistory() async {
+    final List<dynamic> prescriptions = await _apiService.getData('prescriptions/history?farmerId=$_farmerIdForQuery');
+    final List<VetMedicationHistoryItem> allMedications = [];
+
+    for (var prescriptionDoc in prescriptions) {
+      final prescribedOn = (prescriptionDoc['createdAt'] as Map<String, dynamic>).isNotEmpty
+          ? DateTime.fromMillisecondsSinceEpoch((prescriptionDoc['createdAt']['_seconds'] as int) * 1000)
+          : DateTime.now();
+      final animalTagId = prescriptionDoc['animalTagId'] ?? 'N/A';
+
+      // ✅ THE FIX: Check if 'medications' exists and is a list.
+      if (prescriptionDoc['medications'] != null && prescriptionDoc['medications'] is List) {
+        // This is the NEW data format
+        for (var med in prescriptionDoc['medications']) {
+          allMedications.add(VetMedicationHistoryItem(
+            medicationName: med['medicationName'] ?? 'N/A',
+            dosage: med['dosage'] ?? 'N/A',
+            animalTagId: animalTagId,
+            prescribedOn: prescribedOn,
+          ));
+        }
+      } else {
+        // This is the OLD data format, handle it gracefully
+        allMedications.add(VetMedicationHistoryItem(
+          medicationName: prescriptionDoc['medicationName'] ?? 'Old Prescription',
+          dosage: prescriptionDoc['dosage'] ?? 'N/A',
+          animalTagId: animalTagId,
+          prescribedOn: prescribedOn,
+        ));
       }
-      return []; // Return an empty list if there's an error
     }
+    allMedications.sort((a, b) => b.prescribedOn.compareTo(a.prescribedOn));
+    return allMedications;
   }
 
   @override
   Widget build(BuildContext context) {
+    // The build method is correct and does not need to change.
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Prescription History'),
+        title: Text("History for Farmer $_farmerIdForQuery"),
         backgroundColor: Colors.indigo,
       ),
-      body: FutureBuilder<List<Prescription>>(
+      body: FutureBuilder<List<VetMedicationHistoryItem>>(
         future: _historyFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                'No prescription history found.',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-            );
+            return const Center(child: Text('No prescription history found.'));
           }
-
           final history = snapshot.data!;
           return ListView.builder(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(10),
             itemCount: history.length,
             itemBuilder: (context, index) {
-              final prescription = history[index];
+              final item = history[index];
               return Card(
                 elevation: 3,
-                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ListTile(
                   leading: const Icon(Icons.receipt_long, color: Colors.indigo, size: 40),
                   title: Text(
-                    prescription.medicationName,
+                    '${item.medicationName} (for Animal: ${item.animalTagId})',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    'Dosage: ${prescription.dosage}\n'
-                    'Date: ${DateFormat.yMMMd().format(prescription.createdAt)}',
+                    'Dosage: ${item.dosage}\nPrescribed on: ${DateFormat.yMMMd().format(item.prescribedOn)}',
                   ),
                   isThreeLine: true,
                 ),
@@ -125,4 +113,3 @@ class _PrescriptionHistoryScreenState extends State<PrescriptionHistoryScreen> {
     );
   }
 }
-
