@@ -1,0 +1,56 @@
+
+### **Knowledge Base: Bovine Health**
+
+**Subject: General Care for Sick Animals**
+For any sick animal, ensure it has plenty of clean, fresh water. Isolate the sick animal from the rest of the herd to prevent the spread of disease. Observe the animal for symptoms like fever, coughing, or loss of appetite. Provide a clean, dry, and comfortable resting area away from drafts and extreme weather.
+
+**Subject: Bloat (Ruminal Tympany)**
+**Severity:** Critical Emergency
+**Symptoms:** Obvious, severe swelling on the animal's left side (the rumen). The animal shows signs of distress, kicks at its belly, grunts, and has difficulty breathing. May collapse if not treated.
+**Immediate Care:** This is a life-or-death situation. Call a vet immediately. Do not feed the animal anything. Try to get the animal to stand up and walk around to help pass gas. Gently massaging the swollen left flank can sometimes help.
+**Food/Water:** No food. Do not drench with water or any liquid, as the animal may not be able to swallow and could choke. The vet will release the gas with a stomach tube or a special instrument.
+
+**Subject: Calf Scours (Diarrhea in Calves)**
+**Severity:** High (Can be fatal in < 24 hours)
+**Symptoms:** Watery, discolored (yellow, white, or bloody) feces. The calf will be weak, lethargic, and have sunken eyes and a dry nose, which are signs of severe dehydration. May be unable to stand.
+**Immediate Care:** Dehydration is the main cause of death. Immediately isolate the calf. **Stop feeding milk or milk replacer** for at least 12-24 hours. You MUST provide oral electrolyte fluids. Mix a commercial electrolyte powder with clean, warm water and feed 2-3 liters, 2-3 times per day.
+**Food/Water:** Only electrolytes for the first 12-24 hours. After that, slowly reintroduce milk in smaller, more frequent meals, alternating with electrolyte feedings.
+**Vet Action:** A vet is needed if the calf cannot stand or will not drink. They will provide IV fluids and may prescribe antibiotics if the cause is bacterial (like E. coli or Salmonella).
+
+**Subject: Pneumonia (Bovine Respiratory Disease - BRD)**
+**Severity:** High
+**Symptoms:** High fever (over 103°F / 39.5°C). Rapid, shallow breathing. A harsh, dry cough. Discharge from the nose and eyes. Droopy ears, loss of appetite, and general depression.
+**Immediate Care:** Isolate the animal in a clean, dry shelter that is well-ventilated but **free from drafts**. Reduce all stress (e.g., transport, noise).
+**Food/Water:** Ensure easy access to fresh, clean water and highly palatable food to encourage eating. Offer high-quality, soft hay (like alfalfa) as dusty feed can worsen the cough.
+**Vet Action:** A vet must be called. Pneumonia is a serious infection and requires a course of antibiotics and anti-inflammatory drugs.
+
+**Subject: Milk Fever (Hypocalcemia)**
+**Severity:** Critical Emergency
+**Symptoms:** Occurs in high-producing cows, usually within 72 hours *after* giving birth.
+* **Stage 1:** Wobbly, staggering, weak, nervous, and slight tremors.
+* **Stage 2:** Cow is down and unable to stand, but can sit up on her chest (sternal recumbency). Often has a "kink" in her neck or turns her head to look at her flank. Ears feel cold.
+* **Stage 3:** Cow is lying on her side, unable to sit up, and is becoming unconscious. This is extremely dangerous as she can bloat and die.
+**Immediate Care:** Call a vet immediately. Prop the cow up to sit on her chest (Stage 2 position) using hay bales or a mound of dirt. This is critical to prevent her from bloating.
+**Food/Water:** Do not try to drench the cow with any liquid (especially calcium). She has lost her ability to swallow and will choke to death.
+**Vet Action:** The vet will administer a sterile calcium solution (calcium gluconate) slowly into the vein (IV) for immediate recovery.
+
+**Subject: Mastitis (Udder Infection)**
+**Severity:** Moderate to High
+**Symptoms:** Inflammation of the udder. The udder may be swollen, hard, hot to the touch, and painful. Milk may be watery, contain clots, flakes, or blood. The animal may have a fever and loss of appetite in severe cases.
+**Immediate Care:** Isolate the animal if possible. After milking, gently but thoroughly "strip" (empty) the infected quarter(s) of all milk. Apply a hot compress or udder balm to reduce swelling.
+**Food/Water:** Ensure unlimited access to clean water.
+**Vet Action:** A vet should be consulted to identify the bacteria and prescribe the correct intramammary antibiotics (infused into the teat).
+
+**Subject: Foot Rot**
+**Severity:** Moderate
+**Symptoms:** Sudden lameness, usually in one leg. The animal will be reluctant to walk. There is a characteristic foul smell and swelling between the toes. The skin in the area will be red and raw.
+**Immediate Care:** Move the animal to a clean, dry area (not mud or manure). Gently lift the hoof and wash it thoroughly with clean water and a mild antiseptic. Remove all mud and debris.
+**Food/Water:** No change needed, but ensure food and water are easily accessible so the animal does not have to walk far.
+**Vet Action:** A vet may be needed to prescribe an injectable antibiotic (like Penicillin) to clear the infection.
+
+**Subject: Foot and Mouth Disease (FMD)**
+**Severity:** **EXTREME EMERGENCY (Notifiable Disease)**
+**Symptoms:** High fever, followed by the appearance of blisters (vesicles) on the tongue, gums, in the mouth, between the toes, and on the teats. Animals will drool excessively (ropy saliva) and refuse to eat due to pain. They will also be severely lame.
+**Immediate Care:** **IMMEDIATELY QUARANTINE** the animal and the entire herd. Do not move any animals, feed, or equipment off your farm.
+**Vet/Authority:** **THIS IS A NOTIFIABLE DISEASE.** You must report it to the state/government veterinary authority immediately. Do not attempt to treat it yourself. The authorities will manage the containment, control, and culling procedures.
+**Food/Water:** Provide very soft, mashed food and clean water, as the mouth sores are extremely painful.

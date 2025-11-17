@@ -3,11 +3,11 @@ const blockchainService = require('../services/blockchainService');
 
 const prescriptionController = {
   addPrescription: async (req, res) => {
-    // ✅ FIX: The request body now contains an array of medications
-    const { vetId, farmerId, animalTagId, withdrawalDays, medications } = req.body;
+    // ✅ 1. ADD 'diagnosis' TO THE FIELDS WE EXPECT
+    const { vetId, farmerId, animalTagId, diagnosis, withdrawalDays, medications } = req.body;
 
-    if (!vetId || !farmerId || !medications || !Array.isArray(medications) || medications.length === 0) {
-      return res.status(400).send({ message: 'Missing required fields or medications.' });
+    if (!vetId || !farmerId || !medications || !Array.isArray(medications) || !diagnosis) {
+      return res.status(400).send({ message: 'Missing required fields: vetId, farmerId, diagnosis, or medications.' });
     }
 
     try {
@@ -18,20 +18,21 @@ const prescriptionController = {
         vetId,
         farmerId,
         animalTagId,
+        diagnosis: diagnosis, // ✅ 2. SAVE THE DIAGNOSIS TO THE DATABASE
         withdrawalDays: parseInt(withdrawalDays) || 0,
-        medications: medications, // Store the entire array of medications
+        medications: medications,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
       await newPrescriptionRef.set(prescriptionData);
 
-      // Log the primary medication to the blockchain
       const primaryMedicationName = medications[0].medicationName || 'multiple';
+      // We can also pass the diagnosis to the blockchain log
       const blockchainResult = await blockchainService.logPrescriptionEvent(
         prescriptionData.prescriptionId, 
         vetId, 
         farmerId,
-        primaryMedicationName // You could add more data to the log if needed
+        primaryMedicationName
       );
 
       res.status(201).send({
@@ -47,13 +48,16 @@ const prescriptionController = {
   },
   
   getPrescriptionHistory: async (req, res) => {
-    // This function remains the same and will work correctly
+    // This function remains the same. It already sends the *entire* document,
+    // so the new 'diagnosis' field will be automatically included.
     const { farmerId } = req.query;
     if (!farmerId) {
       return res.status(400).send({ message: 'Missing farmerId query parameter.' });
     }
     try {
-      const snapshot = await db.collection('prescriptions').where('farmerId', '==', farmerId).get();
+      const snapshot = await db.collection('prescriptions')
+        .where('farmerId', '==', farmerId)
+        .get();
       const history = snapshot.docs.map(doc => doc.data());
       res.status(200).send(history);
     } catch (error) {

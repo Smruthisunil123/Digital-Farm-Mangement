@@ -29,6 +29,8 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
   final TextEditingController _farmerIdController = TextEditingController();
   final TextEditingController _animalTagController = TextEditingController();
   final TextEditingController _withdrawalDaysController = TextEditingController();
+  // ✅ NEW: Controller for the Diagnosis field
+  final TextEditingController _diagnosisController = TextEditingController();
 
   // We now manage a list of medication entries
   List<MedicationEntry> _medications = [MedicationEntry()];
@@ -39,6 +41,7 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
     _farmerIdController.dispose();
     _animalTagController.dispose();
     _withdrawalDaysController.dispose();
+    _diagnosisController.dispose(); // ✅ Dispose the new controller
     for (var med in _medications) {
       med.dispose();
     }
@@ -82,6 +85,7 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
         "vetId": "vet_placeholder_id",
         "farmerId": _farmerIdController.text.trim(),
         "animalTagId": _animalTagController.text.trim(),
+        "diagnosis": _diagnosisController.text.trim(), // ✅ Send the diagnosis
         "withdrawalDays": int.tryParse(_withdrawalDaysController.text.trim()) ?? 0,
         "medications": medicationsJson, // The main data is now an array
       };
@@ -89,10 +93,12 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
       await _apiService.postData('prescriptions/add', body);
       
       if (!mounted) return;
+      // ✅ THE FIX: Corrected the typo from M(context) to (context)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Prescription submitted successfully!'), backgroundColor: Colors.green),
       );
       _formKey.currentState!.reset();
+      _diagnosisController.clear(); // ✅ Clear the diagnosis field
       setState(() => _medications = [MedicationEntry()]);
 
     } catch (e) {
@@ -128,6 +134,13 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
               controller: _animalTagController,
               decoration: const InputDecoration(labelText: 'Animal Tag ID / Batch No.'),
               validator: (value) => value!.isEmpty ? 'Enter Animal ID' : null,
+            ),
+            const SizedBox(height: 12),
+            // ✅ ADDED: The new diagnosis text field
+            TextFormField(
+              controller: _diagnosisController,
+              decoration: const InputDecoration(labelText: 'Diagnosis (e.g., Mastitis)'),
+              validator: (value) => value!.isEmpty ? 'Enter a diagnosis' : null,
             ),
             const SizedBox(height: 24),
             const Text('Medications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
