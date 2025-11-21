@@ -1,0 +1,37 @@
+Subject: Veterinary Medicine Withdrawal Periods Reference Guide
+
+Medicine: Amoxicillin
+Type: Antibiotic
+Milk Withdrawal: 96 hours (4 days)
+
+Medicine: Oxytetracycline
+Type: Antibiotic
+Milk Withdrawal: 7 days
+
+Medicine: Meloxicam
+Type: Anti-inflammatory (NSAID)
+Milk Withdrawal: 5 days
+
+Medicine: Ivermectin
+Type: Antiparasitic
+Milk Withdrawal: Do not use in lactating dairy cows.
+
+Medicine: Enrofloxacin
+Type: Antibiotic
+Milk Withdrawal: Not approved for lactating dairy cattle.
+
+Medicine: Penicillin G Procaine
+Type: Antibiotic
+Milk Withdrawal: 48 hours (2 days)
+
+Medicine: Ceftiofur
+Type: Antibiotic
+Milk Withdrawal: 0 hours (No withdrawal)
+
+Medicine: Dolo 650 (Paracetamol)
+Type: Analgesic / Antipyretic
+Milk Withdrawal: 24 hours (1 day)
+
+Medicine: Salmol
+Type: Bronchodilator / Respiratory Aid
+Milk Withdrawal: 48 hours (2 days)

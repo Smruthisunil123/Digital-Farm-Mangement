@@ -14,13 +14,18 @@ google-cloud-speech==2.24.0
 google-cloud-translate==3.13.0
 pydub==0.25.1
 
-# --- For RAG (AI Advisor) ---
-langchain==0.2.17
-langchain-community==0.2.18
-chromadb==0.5.4
-ollama==0.3.0
-langchain-text-splitters==0.2.2
-pypdf==4.3.1
+# Utilities
 requests==2.32.3
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.25.1
+
+# --- For AI Brain (Cloud - Fast & Light) ---
+google-generativeai==0.7.2
+
+# --- For RAG (Local AI - Commented out to save resources) ---
+# langchain==0.2.17
+# langchain-community==0.2.18
+# chromadb==0.5.4
+# ollama==0.3.0
+# langchain-text-splitters==0.2.2
+# pypdf==4.3.1

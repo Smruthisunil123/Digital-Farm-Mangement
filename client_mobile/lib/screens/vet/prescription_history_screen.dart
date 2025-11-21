@@ -17,7 +17,11 @@ class VetMedicationHistoryItem {
 }
 
 class VetPrescriptionHistoryScreen extends StatefulWidget {
-  const VetPrescriptionHistoryScreen({super.key});
+  // ✅ 1. Accept the farmerId as a parameter
+  final String farmerId;
+  
+  const VetPrescriptionHistoryScreen({super.key, required this.farmerId});
+
   @override
   State<VetPrescriptionHistoryScreen> createState() => _VetPrescriptionHistoryScreenState();
 }
@@ -25,7 +29,6 @@ class VetPrescriptionHistoryScreen extends StatefulWidget {
 class _VetPrescriptionHistoryScreenState extends State<VetPrescriptionHistoryScreen> {
   final ApiService _apiService = ApiService();
   late Future<List<VetMedicationHistoryItem>> _historyFuture;
-  final String _farmerIdForQuery = "farmer123";
 
   @override
   void initState() {
@@ -34,34 +37,46 @@ class _VetPrescriptionHistoryScreenState extends State<VetPrescriptionHistoryScr
   }
 
   Future<List<VetMedicationHistoryItem>> _fetchAndProcessHistory() async {
-    final List<dynamic> prescriptions = await _apiService.getData('prescriptions/history?farmerId=$_farmerIdForQuery');
+    // ✅ 2. Use widget.farmerId instead of a hardcoded string
+    final List<dynamic> prescriptions = await _apiService.getData('prescriptions/history?farmerId=${widget.farmerId}');
     final List<VetMedicationHistoryItem> allMedications = [];
 
     for (var prescriptionDoc in prescriptions) {
-      final prescribedOn = (prescriptionDoc['createdAt'] as Map<String, dynamic>).isNotEmpty
-          ? DateTime.fromMillisecondsSinceEpoch((prescriptionDoc['createdAt']['_seconds'] as int) * 1000)
-          : DateTime.now();
+      // Safe Date Parsing
+      DateTime prescribedOn = DateTime.now();
+      if (prescriptionDoc['createdAt'] != null) {
+         if (prescriptionDoc['createdAt'] is Map) {
+            prescribedOn = DateTime.fromMillisecondsSinceEpoch((prescriptionDoc['createdAt']['_seconds'] as int) * 1000);
+         } else if (prescriptionDoc['createdAt'] is String) {
+            prescribedOn = DateTime.parse(prescriptionDoc['createdAt']);
+         }
+      }
+      
       final animalTagId = prescriptionDoc['animalTagId'] ?? 'N/A';
 
-      // ✅ THE FIX: Check if 'medications' exists and is a list.
+      // ✅ 3. Robust Check for Old vs New Data
       if (prescriptionDoc['medications'] != null && prescriptionDoc['medications'] is List) {
-        // This is the NEW data format
+        // NEW FORMAT
         for (var med in prescriptionDoc['medications']) {
-          allMedications.add(VetMedicationHistoryItem(
-            medicationName: med['medicationName'] ?? 'N/A',
-            dosage: med['dosage'] ?? 'N/A',
-            animalTagId: animalTagId,
-            prescribedOn: prescribedOn,
-          ));
+          allMedications.add(
+            VetMedicationHistoryItem(
+              medicationName: med['medicationName'] ?? 'N/A',
+              dosage: med['dosage'] ?? 'N/A',
+              animalTagId: animalTagId,
+              prescribedOn: prescribedOn,
+            ),
+          );
         }
       } else {
-        // This is the OLD data format, handle it gracefully
-        allMedications.add(VetMedicationHistoryItem(
-          medicationName: prescriptionDoc['medicationName'] ?? 'Old Prescription',
-          dosage: prescriptionDoc['dosage'] ?? 'N/A',
-          animalTagId: animalTagId,
-          prescribedOn: prescribedOn,
-        ));
+        // OLD FORMAT
+        allMedications.add(
+          VetMedicationHistoryItem(
+            medicationName: prescriptionDoc['medicationName'] ?? 'Old Record',
+            dosage: prescriptionDoc['dosage'] ?? 'N/A',
+            animalTagId: animalTagId,
+            prescribedOn: prescribedOn,
+          ),
+        );
       }
     }
     allMedications.sort((a, b) => b.prescribedOn.compareTo(a.prescribedOn));
@@ -70,10 +85,10 @@ class _VetPrescriptionHistoryScreenState extends State<VetPrescriptionHistoryScr
 
   @override
   Widget build(BuildContext context) {
-    // The build method is correct and does not need to change.
     return Scaffold(
       appBar: AppBar(
-        title: Text("History for Farmer $_farmerIdForQuery"),
+        // ✅ 4. Display the specific farmer's ID in the title
+        title: Text("History: ${widget.farmerId}"),
         backgroundColor: Colors.indigo,
       ),
       body: FutureBuilder<List<VetMedicationHistoryItem>>(
@@ -83,8 +98,9 @@ class _VetPrescriptionHistoryScreenState extends State<VetPrescriptionHistoryScr
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No prescription history found.'));
+            return const Center(child: Text('No prescription history found for this farmer.'));
           }
+
           final history = snapshot.data!;
           return ListView.builder(
             padding: const EdgeInsets.all(10),

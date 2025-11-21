@@ -9,7 +9,6 @@ class MedicationEntry {
   bool afternoon = false;
   bool night = false;
 
-  // Helper to dispose of controllers
   void dispose() {
     nameController.dispose();
     dosageController.dispose();
@@ -17,7 +16,10 @@ class MedicationEntry {
 }
 
 class PrescriptionFormScreen extends StatefulWidget {
-  const PrescriptionFormScreen({super.key});
+  // ✅ RESTORED: Accept the farmer ID from the selection screen
+  final String? prefilledFarmerId;
+  
+  const PrescriptionFormScreen({super.key, this.prefilledFarmerId});
 
   @override
   State<PrescriptionFormScreen> createState() => _PrescriptionFormScreenState();
@@ -29,19 +31,27 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
   final TextEditingController _farmerIdController = TextEditingController();
   final TextEditingController _animalTagController = TextEditingController();
   final TextEditingController _withdrawalDaysController = TextEditingController();
-  // ✅ NEW: Controller for the Diagnosis field
   final TextEditingController _diagnosisController = TextEditingController();
 
-  // We now manage a list of medication entries
   List<MedicationEntry> _medications = [MedicationEntry()];
   bool _isLoading = false;
+  bool _isCalculating = false; 
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ RESTORED: Pre-fill the Farmer ID if passed
+    if (widget.prefilledFarmerId != null) {
+      _farmerIdController.text = widget.prefilledFarmerId!;
+    }
+  }
 
   @override
   void dispose() {
     _farmerIdController.dispose();
     _animalTagController.dispose();
     _withdrawalDaysController.dispose();
-    _diagnosisController.dispose(); // ✅ Dispose the new controller
+    _diagnosisController.dispose();
     for (var med in _medications) {
       med.dispose();
     }
@@ -63,12 +73,53 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
     }
   }
 
+  Future<void> _autoCalculateWithdrawal() async {
+    List<String> medNames = _medications
+        .map((m) => m.nameController.text.trim())
+        .where((name) => name.isNotEmpty)
+        .toList();
+
+    if (medNames.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter medication names first.')),
+      );
+      return;
+    }
+
+    setState(() => _isCalculating = true);
+
+    try {
+      final response = await _apiService.postData('prescriptions/calculate-withdrawal', {
+        'medications': medNames
+      });
+
+      if (response['withdrawal_days'] != null) {
+        setState(() {
+          _withdrawalDaysController.text = response['withdrawal_days'].toString();
+        });
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('Withdrawal period auto-calculated by AI!'), backgroundColor: Colors.green),
+           );
+        }
+      }
+    } catch (e) {
+      print('AI Calc Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to calculate withdrawal period.'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isCalculating = false);
+    }
+  }
+
   Future<void> _submitPrescription() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
-      // Convert our UI data into a JSON-friendly format for the server
       List<Map<String, dynamic>> medicationsJson = _medications.map((med) {
         List<String> frequency = [];
         if (med.morning) frequency.add('morning');
@@ -77,7 +128,7 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
         return {
           "medicationName": med.nameController.text.trim(),
           "dosage": med.dosageController.text.trim(),
-          "frequency": frequency, // Send as an array of strings
+          "frequency": frequency,
         };
       }).toList();
 
@@ -85,20 +136,25 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
         "vetId": "vet_placeholder_id",
         "farmerId": _farmerIdController.text.trim(),
         "animalTagId": _animalTagController.text.trim(),
-        "diagnosis": _diagnosisController.text.trim(), // ✅ Send the diagnosis
+        "diagnosis": _diagnosisController.text.trim(),
         "withdrawalDays": int.tryParse(_withdrawalDaysController.text.trim()) ?? 0,
-        "medications": medicationsJson, // The main data is now an array
+        "medications": medicationsJson,
       };
 
       await _apiService.postData('prescriptions/add', body);
       
       if (!mounted) return;
-      // ✅ THE FIX: Corrected the typo from M(context) to (context)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Prescription submitted successfully!'), backgroundColor: Colors.green),
       );
       _formKey.currentState!.reset();
-      _diagnosisController.clear(); // ✅ Clear the diagnosis field
+      _diagnosisController.clear();
+      // Keep the farmer ID if it was pre-filled
+      if (widget.prefilledFarmerId != null) {
+         _farmerIdController.text = widget.prefilledFarmerId!;
+      } else {
+         _farmerIdController.clear();
+      }
       setState(() => _medications = [MedicationEntry()]);
 
     } catch (e) {
@@ -136,7 +192,6 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
               validator: (value) => value!.isEmpty ? 'Enter Animal ID' : null,
             ),
             const SizedBox(height: 12),
-            // ✅ ADDED: The new diagnosis text field
             TextFormField(
               controller: _diagnosisController,
               decoration: const InputDecoration(labelText: 'Diagnosis (e.g., Mastitis)'),
@@ -146,7 +201,6 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
             const Text('Medications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
             const Divider(),
             
-            // Dynamically build the list of medication fields
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -165,12 +219,34 @@ class _PrescriptionFormScreenState extends State<PrescriptionFormScreen> {
             const Divider(),
             
             const SizedBox(height: 12),
+            
+            // ✅ "Auto Generate" Text Button
             TextFormField(
               controller: _withdrawalDaysController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Withdrawal Days (e.g., 7 days)'),
+              decoration: InputDecoration(
+                labelText: 'Withdrawal Days',
+                hintText: 'Enter days manually',
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextButton.icon(
+                    onPressed: _isCalculating ? null : _autoCalculateWithdrawal,
+                    icon: _isCalculating 
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                        : const Icon(Icons.auto_awesome, size: 18),
+                    label: const Text("Auto Generate", style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.purple,
+                      backgroundColor: Colors.purple.shade50,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ),
+                border: const OutlineInputBorder(),
+              ),
               validator: (value) => value!.isEmpty ? 'Enter valid days' : null,
             ),
+
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: _isLoading ? null : _submitPrescription,

@@ -32,19 +32,49 @@ const reportController = {
    */
   handleChatbotQuery: async (req, res) => {
     const { query, role, audio } = req.body;
+    
     if (!query && !audio) {
       return res.status(400).send({ message: 'Missing query or audio in request.' });
     }
+
     try {
       console.log(`[Node Server] Received chatbot request. Forwarding to Python...`);
-      // Forward the entire request body to the Python service
       const mlResponse = await axios.post(`${ML_SERVICE_URL}/chat`, req.body);
       
-      // Forward the text and audio response back to the Flutter app
-      res.status(200).send(mlResponse.data);
+      // ✅ FIX: Ensure keys match exactly what Flutter is looking for
+      res.status(200).send({
+        text_response: mlResponse.data.text_response,
+        audio_response: mlResponse.data.audio_response
+      });
+
     } catch (error) {
-      console.error('[Node Server] Error calling Python chatbot service:', error.message);
+      console.error('[Node Server] Chatbot Error:', error.message);
       res.status(500).send({ message: 'Failed to get chatbot response.' });
+    }
+  },
+
+  /**
+   * ✅ NEW FUNCTION: Bridge to Python for Withdrawal Calculation
+   */
+  calculateWithdrawal: async (req, res) => {
+    const { medications } = req.body; // Expects array of strings ["Med1", "Med2"]
+    
+    if (!medications || !Array.isArray(medications)) {
+        return res.status(400).send({ message: 'Invalid medications list.' });
+    }
+
+    try {
+        console.log('[Node Server] Asking Python AI for withdrawal period...');
+        // Call the Python endpoint
+        const mlResponse = await axios.post(`${ML_SERVICE_URL}/calculate-withdrawal`, { 
+            medications 
+        });
+        // Send result back to Flutter
+        res.status(200).send(mlResponse.data);
+    } catch (error) {
+        console.error('[Node Server] Error calculating withdrawal:', error.message);
+        // Fail gracefully -> 0 days
+        res.status(200).send({ withdrawal_days: 0 }); 
     }
   },
 
@@ -57,3 +87,4 @@ const reportController = {
 };
 
 module.exports = reportController;
+

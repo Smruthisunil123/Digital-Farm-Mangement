@@ -7,67 +7,50 @@ from google.cloud import translate_v2 as translate
 from google.cloud import texttospeech
 import re
 from fuzzywuzzy import process
+import google.generativeai as genai
+import os
 
-# --- New Imports for RAG (AI Advisor) ---
-from langchain_community.llms import Ollama
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-
-# --- Configuration (Your existing config) ---
+# --- Configuration ---
 NODE_API_URL = "http://localhost:3001/api/v1"
 TRANSLATE_CLIENT = translate.Client()
 TTS_CLIENT = texttospeech.TextToSpeechClient()
 
+# 🔑 PASTE YOUR API KEY HERE
+GEMINI_API_KEY = "AIzaSyCy7ovbKc-oZ1GiGKlUyTUm2HejY8MVP2c"
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Using the model that worked for you
+gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+
 ANIMAL_TRANSLATIONS = {
-    "cow": "ಹಸು",    # Hasu
-    "buff": "ಎಮ್ಮೆ", # Emme (for buffalo)
-    "hen": "ಕೋಳಿ",   # Koli
-    "dog": "ನಾಯಿ",   # Nayi
-    "cat": "ಬೆಕ್ಕು",  # Bekku
+    "cow": "ಹಸು", "buff": "ಎಮ್ಮೆ", "hen": "ಕೋಳಿ", "dog": "ನಾಯಿ", "cat": "ಬೆಕ್ಕು"
 }
 
-# --- RAG (AI Advisor) Setup ---
-# This code runs ONCE when the server starts
-print("Loading AI Advisor 'Brain' (Ollama + ChromaDB)...")
-DB_DIR = "vector_db"
-# 1. Initialize the "reading" model
-embeddings = OllamaEmbeddings(model="mxbai-embed-large")
-# 2. Load the "memory" from the database we built
-vectordb = Chroma(persist_directory=DB_DIR, embedding_function=embeddings)
-# 3. Initialize the "thinking" model (the small one we downloaded)
-llm = Ollama(model="phi3:mini")
-# 4. Create the retriever (the tool that finds documents)
-retriever = vectordb.as_retriever(search_kwargs={"k": 3}) # Get top 3 results
+# --- Helper Functions ---
+def _read_medication_guide():
+    """Reads the text file directly to use as knowledge."""
+    try:
+        # Look for the file in the knowledge_base folder
+        # Adjust path if necessary based on where you run the script from
+        file_path = os.path.join("knowledge_base", "medication_withdrawal_guide.txt")
+        
+        # Fallback check for path if running from root
+        if not os.path.exists(file_path):
+             file_path = os.path.join("ml-services", "knowledge_base", "medication_withdrawal_guide.txt")
+             
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                return f.read()
+        return "No medication guide found."
+    except Exception as e:
+        print(f"Error reading guide: {e}")
+        return ""
 
-# 5. Create the prompt template
-template = """
-You are a helpful farm assistant. Answer the user's question based ONLY on the following context.
-If the context doesn't contain the answer, say "I'm sorry, I don't have that information in my knowledge base."
-
-Context: {context}
-
-Question: {question}
-"""
-prompt = ChatPromptTemplate.from_template(template)
-output_parser = StrOutputParser()
-
-# 6. Create the final RAG "chain"
-rag_chain = (
-    {"context": retriever, "question": RunnablePassthrough()}
-    | prompt
-    | llm
-    | output_parser
-)
-print("--- AI Advisor 'Brain' loaded successfully. ---")
-# --- End of RAG Setup ---
-
-
-# --- Your existing (and correct) helper functions ---
 def _translate_text(text, target_language="kn"):
-    return TRANSLATE_CLIENT.translate(text, target_language=target_language)["translatedText"]
+    try:
+        return TRANSLATE_CLIENT.translate(text, target_language=target_language)["translatedText"]
+    except:
+        return text
 
 def _text_to_speech_audio(text, language_code="kn-IN"):
     synthesis_input = texttospeech.SynthesisInput(text=text)
@@ -76,31 +59,26 @@ def _text_to_speech_audio(text, language_code="kn-IN"):
     response = TTS_CLIENT.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
     return response.audio_content
 
-# --- Your existing (and correct) Scan-to-Speak function ---
-# NO CHANGES HAVE BEEN MADE TO THIS FUNCTION
+# --- Feature 1: Scan-to-Speak ---
 def process_scan_and_speak(image_bytes: bytes, farmer_id: str):
     np_arr = np.frombuffer(image_bytes, np.uint8)
     image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     ocr_text = pytesseract.image_to_string(gray_image).lower()
-    print(f"\n--- OCR DIAGNOSTIC ---")
-    print(f"[DEBUG] Tesseract raw output: '{ocr_text.strip()}'")
+    print(f"[DEBUG] OCR Text: {ocr_text.strip()}")
     
     try:
         response = requests.get(f"{NODE_API_URL}/prescriptions/history?farmerId={farmer_id}")
-        response.raise_for_status()
         history = response.json()
-        if not history:
-            return _text_to_speech_audio(_translate_text("No prescription history found."))
-    except Exception as e:
-        return _text_to_speech_audio(_translate_text("Could not access prescription history."))
+    except:
+        return _text_to_speech_audio(_translate_text("Could not access history."))
 
     all_med_names = [med.get('medicationName') for pres in history for med in pres.get("medications", []) if med.get('medicationName')]
     best_match = process.extractOne(ocr_text, all_med_names)
     
     found_medication = None
     found_prescription_doc = None
-    if best_match and best_match[1] > 80:
+    if best_match and best_match[1] > 70:
         matched_name = best_match[0]
         for pres in history:
             for med in pres.get("medications", []):
@@ -108,18 +86,16 @@ def process_scan_and_speak(image_bytes: bytes, farmer_id: str):
                     found_medication = med
                     found_prescription_doc = pres
                     break
-            if found_medication:
-                break
-    
+            if found_medication: break
+            
     if not found_medication:
-        translated_text = _translate_text("I scanned the image, but I could not find a clear match in your recent history.")
-        audio_bytes = _text_to_speech_audio(translated_text)
-        return base64.b64encode(audio_bytes).decode('utf-8')
+        return base64.b64encode(_text_to_speech_audio(_translate_text("Medicine not found in history."))).decode('utf-8')
 
     med_name = found_medication.get('medicationName', 'Unknown')
     dosage = found_medication.get('dosage', 'not specified')
     frequency = found_medication.get('frequency', [])
     animal_id = found_prescription_doc.get('animalTagId', 'the animal')
+    diagnosis = found_prescription_doc.get('diagnosis', 'condition')
     
     translated_animal_id = animal_id
     match = re.match(r"([a-z]+)(\d+)", animal_id, re.IGNORECASE)
@@ -128,58 +104,103 @@ def process_scan_and_speak(image_bytes: bytes, farmer_id: str):
         translated_type = ANIMAL_TRANSLATIONS.get(animal_type.lower(), animal_type)
         translated_animal_id = f"{translated_type} {animal_number}"
 
-    frequency_text = "as directed"
-    if frequency:
-        frequency_text = "in the " + " and ".join(frequency) + "."
-
+    frequency_text = "in the " + " and ".join(frequency) if frequency else "as directed"
+    
     kannada_med_name = _translate_text(med_name)
     kannada_dosage = _translate_text(dosage)
     kannada_frequency = _translate_text(frequency_text)
+    kannada_diagnosis = _translate_text(diagnosis)
+
+    kannada_response = f"{translated_animal_id}ಗಾಗಿ, ರೋಗನಿರ್ಣಯ {kannada_diagnosis}. ಔಷಧಿ {kannada_med_name}. ಡೋಸೇಜ್ {kannada_dosage}, ಇದನ್ನು {kannada_frequency} ನೀಡಬೇಕು."
     
-    kannada_response = f"{translated_animal_id}ಗಾಗಿ, ಔಷಧಿ {kannada_med_name}. ಡೋಸೇಜ್ {kannada_dosage}, ಇದನ್ನು {kannada_frequency} ನೀಡಬೇಕು."
+    return base64.b64encode(_text_to_speech_audio(kannada_response)).decode('utf-8')
 
-    audio_bytes = _text_to_speech_audio(kannada_response)
-    return base64.b64encode(audio_bytes).decode('utf-8')
-
-# --- ✅ NEW, UPGRADED CHATBOT FUNCTION ---
+# --- Feature 2: Chatbot (Gemini) ---
 def get_chat_response(query: str, role: str):
-    """
-    Handles general queries using the RAG AI Advisor.
-    """
-    print(f"RAG Chatbot received query: '{query}' from role: '{role}'")
-    
+    print(f"Chatbot query: '{query}'")
     try:
-        # 1. Translate the user's query to English (for the LLM)
-        original_language = "kn" # We assume Kannada for now
-        
-        # Check if the query is already English
-        detected = TRANSLATE_CLIENT.detect_language(query)
-        if detected['language'] != 'en':
-            original_language = detected['language']
-            english_query = TRANSLATE_CLIENT.translate(query, target_language="en")["translatedText"]
-        else:
-            english_query = query
-        
-        print(f"Translated query for LLM: {english_query}")
+        # 1. Translate Input
+        try:
+             english_query = TRANSLATE_CLIENT.translate(query, target_language="en")["translatedText"]
+        except:
+             english_query = query
 
-        # 2. Get an expert answer from the RAG system
-        english_response = rag_chain.invoke(english_query)
-        print(f"LLM Response (English): {english_response}")
+        # ✅ THE FIX: Initialize the variable with a default value BEFORE the 'if' block
+        farmer_history_context = "No recent records found."
 
-        # 3. Translate the English answer back to the user's original language
-        final_text_response = _translate_text(english_response, target_language=original_language)
+        # 2. Fetch History for Context
+        if role == 'farmer':
+            try:
+                resp = requests.get(f"{NODE_API_URL}/prescriptions/history?farmerId=farmer123", timeout=2)
+                if resp.status_code == 200:
+                    farmer_history_context = str(resp.json())
+            except: pass
+
+        # 3. Ask Gemini
+        prompt = f"""
+        You are a veterinary assistant.
+        User Question: "{english_query}"
+        User History: {farmer_history_context}
         
-        # 4. Convert the final text to speech in that language
-        audio_bytes = _text_to_speech_audio(final_text_response, language_code=original_language)
-        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+        Instructions:
+        1. If the user asks about a specific animal ID (like 'cow111'), look for it in 'User History'.
+        2. Answering "what should [animal] take?": Find the medicine/dosage in history and tell them.
+        3. If not found, give general advice.
+        """
         
-        return final_text_response, audio_base64
+        gemini_response = gemini_model.generate_content(prompt)
+        english_response = gemini_response.text
+        english_response = re.sub(r'[\*\#]', '', english_response).strip()
+        # 4. Translate & Speak Output
+        kannada_response = _translate_text(english_response, target_language="kn")
+        audio_bytes = _text_to_speech_audio(kannada_response, language_code="kn-IN")
+        
+        return kannada_response, base64.b64encode(audio_bytes).decode('utf-8')
         
     except Exception as e:
-        print(f"Error in RAG chain: {e}")
-        error_text = "I'm sorry, I had an error connecting to the AI brain."
-        # Fallback response
-        kannada_response = _translate_text(error_text)
-        audio_bytes = _text_to_speech_audio(kannada_response)
-        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-        return kannada_response, audio_base64
+        print(f"Chatbot Error: {e}")
+        return _translate_text("I am having trouble thinking right now."), ""
+
+# --- Feature 3: Withdrawal (Gemini) ---
+# ... existing imports and setup ...
+
+# --- Feature 3: Withdrawal Calculation (Gemini + RAG) ---
+def calculate_withdrawal(medications: list) -> int:
+    med_list = ", ".join(medications)
+    print(f"[AI Logic] Calculating withdrawal for: {med_list}")
+    
+    # ✅ FIX: Read the text file directly instead of using 'retriever'
+    knowledge_base_text = _read_medication_guide()
+
+    try:
+        prompt = f"""
+        You are a veterinary expert.
+        
+        REFERENCE DATA:
+        {knowledge_base_text}
+        
+        TASK:
+        The vet has prescribed: {med_list}.
+        Based on the 'REFERENCE DATA' above, determine the withdrawal period (milk/meat) for EACH medicine.
+        
+        RULES:
+        1. Compare the days for all medicines listed.
+        2. Find the MAXIMUM (highest) number of days.
+        3. CRITICAL: Return ONLY the integer number. (e.g., if the max is 7 days, return 7).
+        4. If a medicine is not in the reference data, verify with general medical knowledge, but prioritize the reference.
+        """
+        
+        result = gemini_model.generate_content(prompt)
+        
+        # Extract the number
+        numbers = re.findall(r'\d+', result.text)
+        if numbers:
+            days = int(numbers[0])
+            print(f"[AI Logic] Calculated Days: {days}")
+            return days
+        else:
+            return 0
+            
+    except Exception as e:
+        print(f"AI Calculation Error: {e}")
+        return 0

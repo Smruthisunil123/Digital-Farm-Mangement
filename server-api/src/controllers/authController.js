@@ -75,4 +75,35 @@ const authController = {
   }
 };
 
+// ... existing login function ...
+
+  register: async (req, res) => {
+    const { email, password, name, role } = req.body;
+    if (!email || !password || !role) {
+      return res.status(400).send({ message: 'Email, password, and role are required.' });
+    }
+
+    try {
+      // 1. Create user in Firebase Auth
+      const userRecord = await admin.auth().createUser({
+        email: email,
+        password: password,
+        displayName: name || 'New User',
+      });
+
+      // 2. Create user document in Firestore
+      await db.collection('users').doc(userRecord.uid).set({
+        email: email,
+        name: name || 'New User',
+        role: role, // 'farmer' or 'vet'
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.status(201).send({ message: 'User registered successfully', userId: userRecord.uid });
+    } catch (error) {
+      console.error('Registration Error:', error);
+      res.status(500).send({ message: 'Registration failed', error: error.message });
+    }
+  },
+  
 module.exports = authController;

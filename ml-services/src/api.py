@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 # ✅ THE FIX: Import the new, powerful functions from your chatbot_model
-from chatbot_model import process_scan_and_speak, get_chat_response
+from chatbot_model import process_scan_and_speak, get_chat_response, calculate_withdrawal
 import base64
 
 app = Flask(__name__)
@@ -49,5 +49,21 @@ def chat_endpoint():
         "audio_response": response_audio_base64,
     })
 
+@app.route('/calculate-withdrawal', methods=['POST'])
+def calculate_withdrawal_endpoint():
+    data = request.get_json()
+    if not data or 'medications' not in data:
+        return jsonify({"error": "No medications list provided"}), 400
+    
+    medications = data['medications']
+    
+    try:
+        # ✅ This will now work because we imported the function
+        days = calculate_withdrawal(medications)
+        return jsonify({"withdrawal_days": days})
+    except Exception as e:
+        print(f"Error calculating withdrawal: {e}")
+        return jsonify({"withdrawal_days": 0})
+        
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

@@ -6,6 +6,7 @@ import 'services/auth_service.dart';
 
 // --- Screen Imports ---
 import 'screens/common/auth_screen.dart';
+import 'screens/common/signup_screen.dart'; // ✅ Import the new Signup Screen
 import 'screens/vet/vet_dashboard_screen.dart';
 import 'screens/farmer/dashboard_screen.dart';
 import 'screens/vet/prescription_form.dart';
@@ -13,7 +14,7 @@ import 'screens/farmer/ocr_scan_screen.dart';
 import 'screens/farmer/chatbot_screen.dart';
 import 'screens/vet/appointments_screen.dart';
 // Use aliases to prevent class name conflicts
-import 'screens/vet/prescription_history_screen.dart' as vet_history;
+// import 'screens/vet/prescription_history_screen.dart' as vet_history;
 import 'screens/farmer/prescription_history_screen.dart' as farmer_history;
 
 void main() {
@@ -51,11 +52,13 @@ class MyApp extends StatelessWidget {
       ),
       // All other routes are defined for navigation.
       routes: {
+        //'/': (context) => const AuthScreen(),
         // ✅ THE FIX: The redundant '/' route has been removed.
+        '/signup': (context) => const SignupScreen(), // ✅ Add the signup route here
         '/vet': (context) => const VetDashboardScreen(),
         '/farmer': (context) => const FarmerDashboardScreen(),
         '/prescription': (context) => PrescriptionFormScreen(),
-        '/history': (context) => vet_history.VetPrescriptionHistoryScreen(),
+        //'/history': (context) => vet_history.VetPrescriptionHistoryScreen(),
         '/farmer/history': (context) => farmer_history.FarmerPrescriptionHistoryScreen(),
         '/farmer/ocr': (context) => OcrScanScreen(),
         '/farmer/chatbot': (context) => const ChatbotScreen(),

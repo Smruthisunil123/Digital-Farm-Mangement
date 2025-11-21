@@ -16,34 +16,19 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLoading = false;
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-
     try {
-      // ✅ FIX: We no longer need to get the user here.
-      // We just call the login function. The Consumer in main.dart will handle navigation.
       await Provider.of<AuthService>(context, listen: false)
           .login(_emailController.text.trim(), _passwordController.text.trim());
-
-      // If the login is successful, the Consumer widget will automatically navigate.
-      // We don't need to add any navigation logic here.
-
     } catch (e) {
-      // If login fails, show an error message.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Login failed: Invalid credentials.'),
-            backgroundColor: Colors.red,
-          ),
+          const SnackBar(content: Text('Login failed. Check credentials.'), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -57,7 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      appBar: AppBar(title: const Text('Digital Farm Management')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -66,28 +51,52 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const Text(
+                  "Welcome Back",
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green),
+                ),
+                const SizedBox(height: 30),
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (value) =>
-                      value!.isEmpty || !value.contains('@') ? 'Enter a valid email' : null,
+                  validator: (v) => v!.isEmpty ? 'Enter email' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
                   obscureText: true,
-                  validator: (value) =>
-                      value!.isEmpty ? 'Enter your password' : null,
+                  validator: (v) => v!.isEmpty ? 'Enter password' : null,
                 ),
                 const SizedBox(height: 32),
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                        onPressed: _login,
-                        child: const Text('Login'),
-                      ),
+                
+                // Login Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: _isLoading 
+                      ? const CircularProgressIndicator(color: Colors.white) 
+                      : const Text('LOGIN', style: TextStyle(fontSize: 18)),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // ✅ THIS IS THE MISSING PART: The Register Button
+                TextButton(
+                  onPressed: () {
+                    // Navigate to the signup screen
+                    Navigator.pushNamed(context, '/signup');
+                  },
+                  child: const Text("Don't have an account? Register here"),
+                ),
               ],
             ),
           ),

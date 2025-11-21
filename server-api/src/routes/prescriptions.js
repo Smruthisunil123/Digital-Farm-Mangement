@@ -14,4 +14,7 @@ router.post('/scan-and-speak', reportController.handleScanAndSpeak);
 // The chatbot route is also updated to use the correct function
 router.post('/chatbot', reportController.handleChatbotQuery);
 
+// Use reportController for calculation, not prescriptionController (to keep ML logic together)
+router.post('/calculate-withdrawal', reportController.calculateWithdrawal);
+
 module.exports = router;

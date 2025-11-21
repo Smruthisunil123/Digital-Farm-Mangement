@@ -19,7 +19,7 @@ class ApiService {
       Uri.parse('$baseUrl/$endpoint'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(body),
-    );
+    ).timeout(const Duration(minutes: 10));
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
