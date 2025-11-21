@@ -16,7 +16,7 @@ TRANSLATE_CLIENT = translate.Client()
 TTS_CLIENT = texttospeech.TextToSpeechClient()
 
 # 🔑 PASTE YOUR API KEY HERE
-GEMINI_API_KEY = "AIzaSyCy7ovbKc-oZ1GiGKlUyTUm2HejY8MVP2c"
+GEMINI_API_KEY = "AIzaSyCzD-3AuVaTB9UMvg5fmB60PDLLH3hR2Eo"
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Using the model that worked for you

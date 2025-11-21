@@ -12,6 +12,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _govtIdController = TextEditingController();
+
   String _role = 'farmer'; // Default role
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
@@ -26,6 +28,7 @@ class _SignupScreenState extends State<SignupScreen> {
         'password': _passwordController.text.trim(),
         'name': _nameController.text.trim(),
         'role': _role,
+        'govtId': _govtIdController.text.trim(),
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account created! Please login.')));
@@ -41,30 +44,63 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
+      appBar: AppBar(title: const Text('Create Account'), backgroundColor: Colors.green.shade800),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(controller: _nameController, decoration: const InputDecoration(labelText: 'Full Name')),
-              const SizedBox(height: 10),
-              TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email')),
-              const SizedBox(height: 10),
-              TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _nameController, 
+                decoration: const InputDecoration(labelText: 'Full Name', border: OutlineInputBorder()),
+                validator: (v) => v!.isEmpty ? 'Enter name' : null,
+              ),
+              const SizedBox(height: 15),
+              
+              // ✅ NEW FIELD: Government ID
+              TextFormField(
+                controller: _govtIdController, 
+                decoration: const InputDecoration(labelText: 'Government Farmer ID / Kissan ID', border: OutlineInputBorder()),
+                validator: (v) => v!.isEmpty ? 'Enter Govt ID' : null,
+              ),
+              const SizedBox(height: 15),
+
+              TextFormField(
+                controller: _emailController, 
+                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                validator: (v) => v!.contains('@') ? null : 'Enter valid email',
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: _passwordController, 
+                decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()), 
+                obscureText: true,
+                validator: (v) => v!.length < 6 ? 'Password must be 6+ chars' : null,
+              ),
+              const SizedBox(height: 15),
               DropdownButtonFormField<String>(
                 value: _role,
                 items: const [
                   DropdownMenuItem(value: 'farmer', child: Text('Farmer')),
                   DropdownMenuItem(value: 'vet', child: Text('Veterinarian')),
+                  DropdownMenuItem(value: 'dealer', child: Text('Dealer / Buyer')),
+                  DropdownMenuItem(value: 'authority', child: Text('Authority (FSSAI)')),
                 ],
                 onChanged: (val) => setState(() => _role = val!),
-                decoration: const InputDecoration(labelText: 'Role'),
+                decoration: const InputDecoration(labelText: 'I am a...', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 30),
-              ElevatedButton(onPressed: _isLoading ? null : _register, child: const Text('SIGN UP')),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _register, 
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  backgroundColor: Colors.green.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('SIGN UP', style: TextStyle(fontSize: 18)),
+              ),
             ],
           ),
         ),

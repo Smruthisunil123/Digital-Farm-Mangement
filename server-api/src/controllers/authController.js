@@ -4,22 +4,28 @@ const auth = admin.auth();
 const authController = {
   // --- Your register function is correct, no changes needed ---
   register: async (req, res) => {
-    const { email, password, role, name } = req.body;
+    // ✅ Accept govtId
+    const { email, password, role, name, govtId } = req.body; 
+    
     if (!email || !password || !role) {
-      return res.status(400).send({ message: 'Missing required fields: email, password, role.' });
+      return res.status(400).send({ message: 'Missing required fields.' });
     }
 
     try {
       const userRecord = await auth.createUser({ email, password, displayName: name });
       const uid = userRecord.uid;
       await auth.setCustomUserClaims(uid, { role });
+      
       await db.collection('users').doc(uid).set({
         uid,
         email,
         name,
         role,
+        // ✅ Save the Govt ID to Firestore
+        govtId: govtId || 'N/A', 
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
+      
       res.status(201).send({ uid, email, role, message: 'User registered successfully.' });
     } catch (error) {
       console.error('Registration error:', error);

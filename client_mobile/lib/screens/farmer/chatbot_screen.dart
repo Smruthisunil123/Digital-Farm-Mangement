@@ -9,6 +9,7 @@ import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import '../../services/api_service.dart';
 
 // A simple model for chat messages
@@ -89,13 +90,17 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     }
   }
 
-  Future<void> _startRecording() async {
-    final tempDir = await getTemporaryDirectory();
-    // Use a generic extension that works for both, or specific ones
-    String ext = kIsWeb ? '.webm' : '.aac';
-    _filePath = '${tempDir.path}/chatbot_audio$ext';
+ Future<void> _startRecording() async {
+    // ✅ WEB FIX: Do not use getTemporaryDirectory on web
+    if (!kIsWeb) {
+      final tempDir = await getTemporaryDirectory();
+      _filePath = '${tempDir.path}/chatbot_audio.aac';
+    } else {
+      // On web, the path doesn't matter as much for the recorder, but we need a placeholder
+      _filePath = 'chatbot_audio.webm'; 
+    }
 
-    // ✅ THE FIX: Choose the correct codec for Web vs Mobile
+    // ✅ Use the correct codec for Web vs Mobile
     var codec = kIsWeb ? Codec.opusWebM : Codec.aacADTS;
     
     await _recorder.startRecorder(toFile: _filePath, codec: codec);
@@ -118,6 +123,19 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
          // For this prototype, we skip voice upload on web to avoid file system errors.
          // In a production app, you would use Blob handling here.
          throw Exception("Voice recording is optimized for the mobile app.");
+         // Try to get the audio data from the URL
+        //  final response = await http.get(Uri.parse(_filePath!));
+        //  final audioBytes = response.bodyBytes;
+        //  final audioBase64 = base64Encode(audioBytes);
+         
+        //  // Send to server
+        //  final serverResponse = await _apiService.postData('prescriptions/chatbot', {
+        //     'audio': audioBase64,
+        //     'role': 'farmer',
+        //     'language': 'kn-IN' 
+        // });
+        // _handleServerResponse(serverResponse);
+        // return; // Exit function after web handling
       } else {
          // Mobile logic
          if (_filePath == null) throw Exception("File path is null.");

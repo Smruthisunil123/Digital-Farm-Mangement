@@ -10,16 +10,15 @@ const reportController = {
    * and sends the resulting audio file back to the app.
    */
   handleScanAndSpeak: async (req, res) => {
-    const { image } = req.body;
-    if (!image) {
-      return res.status(400).send({ message: 'No image data provided.' });
+    // ✅ FIX 1: Now expect and get farmerId from the body
+    const { image, farmerId } = req.body; 
+    
+    if (!image || !farmerId) {
+      return res.status(400).send({ message: 'Missing image or farmer ID.' });
     }
     try {
-      console.log('[Node Server] Received scan-and-speak request. Forwarding to Python...');
-      // Call the new '/scan-and-speak' endpoint on the Python service
-      const mlResponse = await axios.post(`${ML_SERVICE_URL}/scan-and-speak`, { image });
-      
-      // Forward the audio response from Python back to the Flutter app
+      // ✅ FIX 2: Pass the image AND farmerId to Python
+      const mlResponse = await axios.post(`${ML_SERVICE_URL}/scan-and-speak`, { image, farmerId }); 
       res.status(200).send({ audio: mlResponse.data.audio });
     } catch (error) {
       console.error('[Node Server] Error in scan-and-speak workflow:', error.message);

@@ -6,21 +6,21 @@ import base64
 app = Flask(__name__)
 
 # ✅ NEW FEATURE: The Scan-to-Speak endpoint
+# ... existing imports ...
+
 @app.route('/scan-and-speak', methods=['POST'])
 def scan_and_speak_endpoint():
-    """
-    Receives an image, identifies the medicine, fetches its prescription,
-    and returns a voice message with the details.
-    """
     data = request.get_json()
-    if not data or 'image' not in data:
-        return jsonify({"error": "No image data provided"}), 400
+    # ✅ FIX 1: Require and get the farmerId from the JSON body
+    if not data or 'image' not in data or 'farmerId' not in data: 
+        return jsonify({"error": "Missing image or farmer ID"}), 400
     
     try:
         image_bytes = base64.b64decode(data['image'])
+        farmer_id = data['farmerId'] # Get the dynamic ID
         
-        # This function now contains all the complex AI logic
-        audio_base64 = process_scan_and_speak(image_bytes, farmer_id="farmer123")
+        # ✅ FIX 2: Pass the dynamic ID to the logic function
+        audio_base64 = process_scan_and_speak(image_bytes, farmer_id=farmer_id)
         
         if not audio_base64:
              return jsonify({"error": "Could not process the request."}), 500
@@ -29,6 +29,8 @@ def scan_and_speak_endpoint():
     except Exception as e:
         print(f"Error in /scan-and-speak: {e}")
         return jsonify({"error": str(e)}), 500
+
+# ... rest of api.py ...
 
 # ✅ UPDATED: The general chatbot endpoint
 @app.route('/chat', methods=['POST'])

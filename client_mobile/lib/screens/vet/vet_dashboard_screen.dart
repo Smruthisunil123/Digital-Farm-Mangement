@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// ✅ IMPORT THE FARMER LIST SCREEN
+import 'vet_farmer_list_screen.dart'; 
 
 /// The main dashboard for the Veterinarian user, providing access to all features.
 class VetDashboardScreen extends StatelessWidget {
@@ -30,12 +32,18 @@ class VetDashboardScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Button for creating a new prescription
+              // --- NEW PRESCRIPTION BUTTON ---
               ElevatedButton.icon(
                 icon: const Icon(Icons.edit_note, size: 28),
                 label: const Text("New Prescription"),
                 onPressed: () {
-                  Navigator.of(context).pushNamed('/prescription');
+                  // ✅ FIX 1: Go to Farmer List, set to Prescription Creation mode
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VetFarmerListScreen(isCreatingPrescription: true),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.indigo.shade700,
@@ -47,13 +55,18 @@ class VetDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               
-              // ✅ THE CHANGE: This new button navigates to the history screen
+              // --- VIEW HISTORY BUTTON ---
               ElevatedButton.icon(
                 icon: const Icon(Icons.history, size: 24),
                 label: const Text("View Prescription History"),
                 onPressed: () {
-                  // This tells the app to open the '/history' route
-                  Navigator.of(context).pushNamed('/history');
+                  // ✅ FIX 2: Go to Farmer List, set to History View mode
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const VetFarmerListScreen(isCreatingPrescription: false),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 20),
@@ -63,14 +76,15 @@ class VetDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Button for managing appointments
+              // --- MANAGE APPOINTMENTS BUTTON ---
               ElevatedButton.icon(
                 icon: const Icon(Icons.calendar_today, size: 24),
                 label: const Text("Manage Appointments"),
                 onPressed: () {
+                  // This still uses a simple named route, which is fine
                   Navigator.of(context).pushNamed('/appointments');
                 },
-                 style: ElevatedButton.styleFrom(
+                style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   textStyle: const TextStyle(fontSize: 18),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -83,4 +97,3 @@ class VetDashboardScreen extends StatelessWidget {
     );
   }
 }
-

@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:provider/provider.dart';
+import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 
 class OcrScanScreen extends StatefulWidget {
@@ -26,6 +30,14 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
     if (image == null) return;
 
     final bytes = await image.readAsBytes();
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final String? farmerId = authService.user?.id;
+    
+    if (farmerId == null) {
+      _showError("Authentication error: Please log in again.");
+      return;
+    }
+
     setState(() {
       _imageBytes = bytes;
       _isLoading = true;
@@ -34,8 +46,14 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
 
     try {
       String base64Image = base64Encode(bytes);
+
+      final body = {
+        'image': base64Image,
+        'farmerId': farmerId, // ✅ FIX 2: PASS THE DYNAMIC ID TO THE SERVER
+      };
+
       // ✅ Call the new, powerful endpoint
-      final response = await _apiService.postData('prescriptions/scan-and-speak', {'image': base64Image});
+     final response = await _apiService.postData('prescriptions/scan-and-speak', body);
       
       if (mounted && response['audio'] != null) {
         setState(() => _statusMessage = 'Playing instructions...');
@@ -53,13 +71,20 @@ class _OcrScanScreenState extends State<OcrScanScreen> {
       }
     } catch (e) {
       print("Scan-to-Speak Failed: $e");
-      if (mounted) {
-        setState(() => _statusMessage = 'Error: Could not process image. Please try again.');
-      }
+      _showError("Error: Could not process image. Please try again.");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+  void _showError(String message) {
+      if (mounted) {
+        setState(() => _statusMessage = message);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
+        );
+     }
+  }
+    
 
   @override
   void dispose() {

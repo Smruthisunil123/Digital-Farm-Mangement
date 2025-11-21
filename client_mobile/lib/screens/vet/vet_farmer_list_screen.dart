@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import 'prescription_history_screen.dart';
+import 'prescription_form.dart';
 
 class VetFarmerListScreen extends StatefulWidget {
-  const VetFarmerListScreen({super.key});
+  // This flag determines if we are picking a farmer for a new Rx or just viewing history
+  final bool isCreatingPrescription; 
+  
+  const VetFarmerListScreen({super.key, this.isCreatingPrescription = false});
 
   @override
   State<VetFarmerListScreen> createState() => _VetFarmerListScreenState();
@@ -16,15 +20,17 @@ class _VetFarmerListScreenState extends State<VetFarmerListScreen> {
   @override
   void initState() {
     super.initState();
-    // This calls the endpoint you created to get all users with role='farmer'
-    _farmersFuture = _apiService.getData('users/farmers');
+    _farmersFuture = _apiService.getData('users/farmers').then((data) {
+      // Dart is happy because we are explicitly returning the correct list type
+      return data as List<dynamic>; 
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Select a Farmer"),
+        title: Text(widget.isCreatingPrescription ? "Select Farmer for Rx" : "Select Farmer History"),
         backgroundColor: Colors.indigo,
       ),
       body: FutureBuilder<List<dynamic>>(
@@ -55,18 +61,28 @@ class _VetFarmerListScreenState extends State<VetFarmerListScreen> {
                     farmer['name'] ?? 'Unknown Name',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(farmer['email'] ?? ''),
+                  // ✅ UPDATED: Show Government ID and Email
+                  subtitle: Text("Govt ID: ${farmer['govtId'] ?? 'N/A'}\n${farmer['email']}"),
+                  isThreeLine: true,
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Navigate to history screen with this specific farmer's ID
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => VetPrescriptionHistoryScreen(
-                          farmerId: farmer['id'], // Passes the real ID (e.g., xYz123)
+                    if (widget.isCreatingPrescription) {
+                      // Go to Prescription Form with ID Pre-filled
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PrescriptionFormScreen(prefilledFarmerId: farmer['id']),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      // Go to History Screen
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => VetPrescriptionHistoryScreen(farmerId: farmer['id']),
+                        ),
+                      );
+                    }
                   },
                 ),
               );

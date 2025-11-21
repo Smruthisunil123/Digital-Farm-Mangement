@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // ✅ Import Provider
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart'; // ✅ Import AuthService
 import 'package:intl/intl.dart';
 
 class MedicationHistoryItem {
@@ -20,66 +22,78 @@ class MedicationHistoryItem {
 
 class FarmerPrescriptionHistoryScreen extends StatefulWidget {
   const FarmerPrescriptionHistoryScreen({super.key});
-
   @override
   State<FarmerPrescriptionHistoryScreen> createState() => _FarmerPrescriptionHistoryScreenState();
 }
 
 class _FarmerPrescriptionHistoryScreenState extends State<FarmerPrescriptionHistoryScreen> {
   final ApiService _apiService = ApiService();
-  late Future<List<MedicationHistoryItem>> _historyFuture;
-  // In a real app, this would come from the logged-in user's ID
-  final String _farmerId = "farmer123"; 
+  late Future<List<MedicationHistoryItem>> _historyFuture = Future.value([]); // Default empty Future
+  
+  bool _isLoading = true;
+  String? _myRealId; // This will hold the logged-in user's unique ID
 
   @override
-  void initState() {
-    super.initState();
-    _historyFuture = _fetchAndProcessHistory();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This is the place to fetch data that depends on the Context (Provider)
+    if (_myRealId == null) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      _myRealId = authService.user?.id; // Get the ID from the AuthService
+      
+      if (_myRealId != null) {
+        _historyFuture = _fetchAndProcessHistory(_myRealId!);
+      } else {
+        _historyFuture = Future.value([]);
+      }
+      
+      // Once we have the Future, set the loading state
+      if (_historyFuture != null && mounted) {
+        _historyFuture.then((_) => setState(() => _isLoading = false));
+      }
+    }
   }
 
-  Future<List<MedicationHistoryItem>> _fetchAndProcessHistory() async {
-    final List<dynamic> prescriptions = await _apiService.getData('prescriptions/history?farmerId=$_farmerId');
+  Future<List<MedicationHistoryItem>> _fetchAndProcessHistory(String farmerId) async {
+    // ✅ 1. Use the dynamic ID for the API call
+    final List<dynamic> prescriptions = await _apiService.getData('prescriptions/history?farmerId=$farmerId');
     final List<MedicationHistoryItem> allMedications = [];
 
     for (var prescriptionDoc in prescriptions) {
-      // 1. Parse Date
-      final prescribedOn = (prescriptionDoc['createdAt'] as Map<String, dynamic>).isNotEmpty
-          ? DateTime.fromMillisecondsSinceEpoch((prescriptionDoc['createdAt']['_seconds'] as int) * 1000)
-          : DateTime.now();
+      // Robust Parsing Logic (handling both new and old data formats)
+      DateTime prescribedOn = DateTime.now();
+      if (prescriptionDoc['createdAt'] != null) {
+         if (prescriptionDoc['createdAt'] is Map) {
+            prescribedOn = DateTime.fromMillisecondsSinceEpoch((prescriptionDoc['createdAt']['_seconds'] as int) * 1000);
+         } else if (prescriptionDoc['createdAt'] is String) {
+            prescribedOn = DateTime.parse(prescriptionDoc['createdAt']);
+         }
+      }
       
-      // 2. Get Top-Level Fields
       final withdrawalDays = prescriptionDoc['withdrawalDays'] ?? 0;
       final animalTagId = prescriptionDoc['animalTagId'] ?? 'N/A';
 
-      // ✅ THE FIX: Check if 'medications' list exists before looping
       if (prescriptionDoc['medications'] != null && prescriptionDoc['medications'] is List) {
-        // Handle NEW format (List of medicines)
         for (var med in prescriptionDoc['medications']) {
-          allMedications.add(
-            MedicationHistoryItem(
-              medicationName: med['medicationName'] ?? 'N/A',
-              dosage: med['dosage'] ?? 'N/A',
-              animalTagId: animalTagId,
-              prescribedOn: prescribedOn,
-              withdrawalDays: withdrawalDays is int ? withdrawalDays : int.tryParse(withdrawalDays.toString()) ?? 0,
-            ),
-          );
+          allMedications.add(MedicationHistoryItem(
+            medicationName: med['medicationName'] ?? 'N/A',
+            dosage: med['dosage'] ?? 'N/A',
+            animalTagId: animalTagId,
+            prescribedOn: prescribedOn,
+            withdrawalDays: withdrawalDays is int ? withdrawalDays : int.tryParse(withdrawalDays.toString()) ?? 0,
+          ));
         }
       } else {
-        // Handle OLD format (Single medicine at top level)
-        allMedications.add(
-          MedicationHistoryItem(
+         allMedications.add(MedicationHistoryItem(
             medicationName: prescriptionDoc['medicationName'] ?? 'Old Record',
             dosage: prescriptionDoc['dosage'] ?? 'N/A',
             animalTagId: animalTagId,
             prescribedOn: prescribedOn,
             withdrawalDays: withdrawalDays is int ? withdrawalDays : int.tryParse(withdrawalDays.toString()) ?? 0,
-          ),
-        );
+          ));
       }
     }
     
-    // Sort by newest first
     allMedications.sort((a, b) => b.prescribedOn.compareTo(a.prescribedOn));
     return allMedications;
   }
@@ -90,15 +104,25 @@ class _FarmerPrescriptionHistoryScreenState extends State<FarmerPrescriptionHist
       appBar: AppBar(
         title: const Text("Your Medicine History"),
         backgroundColor: Colors.green.shade800,
+        actions: [
+          // Refresh button to re-fetch data based on the dynamic ID
+          IconButton(
+            icon: const Icon(Icons.refresh), 
+            onPressed: _myRealId != null ? () => setState(() => _historyFuture = _fetchAndProcessHistory(_myRealId!)) : null
+          ),
+        ],
       ),
       body: FutureBuilder<List<MedicationHistoryItem>>(
         future: _historyFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (_myRealId == null) {
+            return const Center(child: Text('Error: User not authenticated.'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting || _isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No prescription history found.'));
+            return const Center(child: Text('No prescription history found for you.'));
           }
 
           final history = snapshot.data!;
